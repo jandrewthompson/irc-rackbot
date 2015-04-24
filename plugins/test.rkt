@@ -7,9 +7,6 @@
 ;;          ;;plugin body here
 ;;          ))
 
-(require json)
-(require racket/draw)
-
 (defplugin plugin-test 
            (λ (conn chan msg) 
               (irc-send-message conn chan "This is a TEST plugin") 
