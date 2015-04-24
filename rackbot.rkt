@@ -4,16 +4,8 @@
 (require racket/async-channel)
 (require (for-syntax 
            racket/match))
+(require "utils.rkt")
 
-;; UTILS
-(define (rand-nth lst)
-  (list-ref lst (random (length lst))))
-
-(define (box-hash-ref b v)
-  "Where b is a boxed hash table, and v is key to ref"
-  (hash-ref (unbox b) v)
-  )
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Hash holding current bot state
 (define bot 
