@@ -36,8 +36,10 @@
 
 (define ch (irc-connection-incoming connection))
 
+;; All messages flow through this function
+;;  Responsible for dispatching to each registered plugin
 (define (handle message)
- (printf "COMMAND ~s\n" message)
+ (printf "MESSAGE: ~s\n" message)
  (match message
    [(irc-message prefix "PRIVMSG" params _)
     (let ([plugins (box-hash-ref bot "plugins")]
@@ -51,6 +53,7 @@
    [_ (void)])
   )
 
+;; Start handling messages
 (define worker (thread (λ ()
                           (let loop ()
                            (define message (async-channel-get ch))
@@ -62,6 +65,9 @@
   (kill-thread worker)
   )
 
+;; Thare be magic here.
+;;  Provies the all-important (defplugin) macro for building plugins.
+;;  the plugin body should be a lambda that accepts three params: conn, chan-name and args      
 (define-syntax (defplugin stx)
   (match (syntax->list stx)
     [(list _ name body) 
