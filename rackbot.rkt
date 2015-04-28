@@ -8,24 +8,26 @@
 (require "plugin.rkt")
 
 
+(struct bot (name nick real-name channel [plugins #:mutable])  #:transparent)
 ;; Hash holding current bot state
-(define bot 
-  (box #hash(["nick" . "rackbot"]
-             ["name" . "rackbot"]
-             ["real-name" . "Rack Bot Jr."]
-             ["channel" . "#rack-bot-playground"]
-             ["plugins" . ()] 
-             )))
+(define rbot 
+  (bot "rackbot"
+       "rackbot"
+       "Rack Bot Jr."
+       "#rack-bot-playground"
+       '()
+       )
+  )
 
 (define-values (connection ready)
   (irc-connect "chat.freenode.net" 6667 
-               (box-hash-ref bot "nick")  
-               (box-hash-ref bot "name")  
-               (box-hash-ref bot "real-name")  
+               (bot-nick rbot)  
+               (bot-name rbot)
+               (bot-real-name rbot)  
                )
   )
 
-(irc-join-channel connection (box-hash-ref bot "channel"))
+(irc-join-channel connection (bot-channel rbot))
 
 (define ch (irc-connection-incoming connection))
 
@@ -35,13 +37,18 @@
  (printf "MESSAGE: ~s\n" message)
  (match message
    [(irc-message prefix "PRIVMSG" params _)
-    (let ([plugins (box-hash-ref bot "plugins")]
+    (let ([plugins (bot-plugins rbot)]
           [chan (first params)])
-      (for-each (λ (plugin)
+      #|(for-each (λ (plugin)
                    (unless (void? plugin)
                      (plugin connection chan params)))
                 plugins
-                ))
+                ) |#
+      (for ([p plugins]
+            #:final (not (hash-ref p 'final)))
+        ((hash-ref p 'body) connection chan params)
+        )
+      )
     ]
    [_ (void)])
   )
@@ -59,26 +66,23 @@
   )
 
 
-(define (reset-plugins)
+(define (reset-plugins the-bot)
   "Clear out plugin handlers"
-  (set-box! bot
-            (hash-update (unbox bot) "plugins" 
-                         (λ (x) 
-                            '() ))))
+  (set-bot-plugins! the-bot '() ))
 
 ;; Load some plugins!
-(define (load-plugins plugin-names bot)
+(define (load-plugins plugin-names the-bot)
   (for-each 
     (λ (p) 
        (begin
          (load (format "plugins/~a.rkt" p))
-         (load-plugin p bot)
+         (load-plugin p the-bot)
          )
        ) 
        plugin-names)
   )
 
-(load-plugins '("plugin-test" "inventory") bot)
+(load-plugins '("plugin-test" "inventory") rbot)
 
 #|  Misc...
 
