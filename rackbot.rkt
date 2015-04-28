@@ -5,6 +5,7 @@
 (require (for-syntax 
            racket/match))
 (require "utils.rkt")
+(require "plugin.rkt")
 
 
 ;; Hash holding current bot state
@@ -57,23 +58,6 @@
   (kill-thread worker)
   )
 
-;; Thare be magic here.
-;;  Provies the all-important (defplugin) macro for building plugins.
-;;  the plugin body should be a lambda that accepts three params: conn, chan-name and args      
-(define-syntax (defplugin stx)
-  (match (syntax->list stx)
-    [(list _ name body) 
-     (datum->syntax stx 
-                    `(begin 
-                       (define ,name ,body)
-                       (set-box! bot
-                                 (hash-update (unbox bot) "plugins" 
-                                              (λ (x) 
-                                                 (cons ,name x) ))))                   
-                    )
-     ]
-    )
-  )
 
 (define (reset-plugins)
   "Clear out plugin handlers"
@@ -83,10 +67,18 @@
                             '() ))))
 
 ;; Load some plugins!
-(let ()
- (load "plugins/test.rkt")
- )
+(define (load-plugins plugin-names bot)
+  (for-each 
+    (λ (p) 
+       (begin
+         (load (format "plugins/~a.rkt" p))
+         (load-plugin p bot)
+         )
+       ) 
+       plugin-names)
+  )
 
+(load-plugins '("plugin-test" "inventory") bot)
 
 #|  Misc...
 
