@@ -11,8 +11,13 @@
 ;;          ))
 
 (defplugin plugin-test 
-           (λ (conn chan msg) 
-              (irc-send-message conn chan "This is a BOO plugin") 
+           (λ (conn chan to msg params) 
+              (let ([response "This is a test plugin"])
+              (if (not (eq? "" to))
+               (irc-send-message conn chan (format "~a: ~a" to response) )
+               (irc-send-message conn chan response) 
+                ) 
+               )
               ))
 
 

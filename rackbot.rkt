@@ -31,22 +31,37 @@
 
 (define ch (irc-connection-incoming connection))
 
+(define (parse-nick-msg params)
+  (let* ([parts (string-split params  #:trim? #t)]
+         [nick (string-trim (first parts))]
+         [msg (string-trim (string-join (rest parts)))]
+         )
+    (if (regexp-match? #rx".:"  nick)
+          `(,nick ,msg)
+          `("" ,params)
+          )
+   )
+  )
+
 ;; All messages flow through this function
 ;;  Responsible for dispatching to each registered plugin
 (define (handle message)
  (printf "MESSAGE: ~s\n" message)
  (match message
    [(irc-message prefix "PRIVMSG" params _)
-    (let ([plugins (bot-plugins rbot)]
-          [chan (first params)])
-      #|(for-each (λ (plugin)
-                   (unless (void? plugin)
-                     (plugin connection chan params)))
-                plugins
-                ) |#
-      (for ([p plugins]
-            #:final (not (hash-ref p 'final)))
-        ((hash-ref p 'body) connection chan params)
+    (let* ([plugins (bot-plugins rbot)]
+          [chan (first params)]
+          [nick-msg (parse-nick-msg (second params))]
+          [nick (first nick-msg)]
+          [msg (second nick-msg)]
+          )
+      (for/and ([p (reverse plugins)])
+        ;; if plugin returns 'continue, keep processing plugins
+        ;;   otherwise halt by default
+        (if (eq? 'continue (p connection chan nick msg params)) 
+          #t
+          #f
+          )
         )
       )
     ]
@@ -76,6 +91,7 @@
     (λ (p) 
        (begin
          (load (format "plugins/~a.rkt" p))
+         (displayln the-bot)
          (load-plugin p the-bot)
          )
        ) 
@@ -88,8 +104,17 @@
 
 (irc-send-message connection "#bitswebteam-control" "turinturambar: hi")
 
-(reset-plugins)
+(reset-plugins rbot)
+
+(stop-worker)
 
 (kill-thread worker)
 
+(define msg (irc-message "turinturambar!~turintura@50.106.225.3" "PRIVMSG" '("#rack-bot-playground" "rackbot: this is for you") ":turinturambar!~turintura@50.106.225.3 PRIVMSG #rack-bot-playground :rackbot: this is for you\r" ))
+
 |#
+
+
+
+
+
